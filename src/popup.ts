@@ -2,7 +2,7 @@
 // File này chỉ đảm nhiệm việc quản lý UI và hiển thị
 
 import { ScreenshotService } from './services/screenshotService.js';
-import type { ScreenshotData } from './types.js';
+import type { ScreenshotData } from './const/types.js';
 
 class SnapAskPopup {
   // UI Elements
@@ -44,7 +44,7 @@ class SnapAskPopup {
   private attachEventListeners(): void {
     this.captureBtn.addEventListener("click", () => this.handleCaptureClick());
     this.sendBtn.addEventListener("click", () => this.handleSendClick());
-    
+
     // Listen cho messages từ background (keyboard shortcut)
     chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
       if (message.type === "trigger-capture") {
@@ -102,24 +102,16 @@ class SnapAskPopup {
       // Lấy câu hỏi từ input (nếu có)
       const question = this.questionInput.value.trim() || undefined;
 
-      // Gọi service để gửi đến backend
-      const result = await ScreenshotService.sendToBackend(this.currentScreenshot, question);
-      
+      // Gọi Gemini AI (trong dự án)
+      const result = await ScreenshotService.analyzeWithGemini(this.currentScreenshot, question);
+
       // Hiển thị kết quả
       this.showResult(result);
       console.log("✅ Response received:", result);
 
     } catch (error) {
-      console.error("❌ Error sending to backend:", error);
-      
-      // Hiển thị mock data nếu backend chưa sẵn sàng
-      if (error instanceof Error && error.message.includes("Failed to fetch")) {
-        const mockResult = ScreenshotService.getMockResult();
-        this.showResult(mockResult);
-        this.showError("⚠️ Backend chưa được cấu hình. Đây là dữ liệu mẫu.", false);
-      } else {
-        this.showError(`Lỗi khi gửi request: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
+      console.error("❌ Error sending to Gemini:", error);
+      this.showError(`Lỗi: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       this.hideLoading();
       this.setButtonsEnabled(true);
@@ -137,7 +129,7 @@ class SnapAskPopup {
   }
 
   /**
-   * Hiển thị kết quả từ backend
+   * Hiển thị kết quả từ Gemini
    */
   private showResult(content: string): void {
     this.resultContent.textContent = content;
